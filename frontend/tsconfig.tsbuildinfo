@@ -1,0 +1,1 @@
+{"root":["./src/main.tsx","./src/vite-env.d.ts","./src/components/SessionCard.tsx","./src/components/StatusBadge.tsx","./src/components/Terminal.tsx","./src/hooks/useSSE.ts","./src/lib/types.ts","./src/routes/__root.tsx","./src/routes/index.tsx","./src/routes/routeTree.ts","./src/routes/sessions.$sessionId.tsx"],"version":"5.9.3"}
