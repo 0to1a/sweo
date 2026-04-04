@@ -1,10 +1,10 @@
 import type { SessionStatus } from "../lib/types";
 
-export function StatusBadge({ status }: { status: SessionStatus }) {
+export function StatusBadge({ status }: Readonly<{ status: SessionStatus }>) {
   return <span className={`badge badge-${status}`}>{status.replace("_", " ")}</span>;
 }
 
-export function StatusDot({ status }: { status: SessionStatus }) {
+export function StatusDot({ status }: Readonly<{ status: SessionStatus }>) {
   const colorMap: Record<string, string> = {
     working: "dot-green",
     spawning: "dot-blue",

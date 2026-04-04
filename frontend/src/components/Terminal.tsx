@@ -7,7 +7,7 @@ interface TerminalProps {
   sessionId: string;
 }
 
-export function Terminal({ sessionId }: TerminalProps) {
+export function Terminal({ sessionId }: Readonly<TerminalProps>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<XTerm | null>(null);
   const wsRef = useRef<WebSocket | null>(null);

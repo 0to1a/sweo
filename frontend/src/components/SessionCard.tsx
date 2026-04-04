@@ -11,7 +11,7 @@ function formatAge(createdAt: string): string {
   return `${Math.floor(hours / 24)}d`;
 }
 
-export function SessionCard({ session }: { session: Session }) {
+export function SessionCard({ session }: Readonly<{ session: Session }>) {
   return (
     <Link
       to="/sessions/$sessionId"
