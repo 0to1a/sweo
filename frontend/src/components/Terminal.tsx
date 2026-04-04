@@ -35,8 +35,8 @@ export function Terminal({ sessionId }: TerminalProps) {
     termRef.current = term;
 
     // Connect WebSocket
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/terminal?session=${sessionId}`);
+    const protocol = globalThis.location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${protocol}//${globalThis.location.host}/ws/terminal?session=${sessionId}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
