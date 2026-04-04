@@ -36,6 +36,15 @@ func (s *Server) handleKillSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]string{"status": "killed", "session_id": id})
 }
 
+func (s *Server) handleResumeSession(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if err := s.sm.Resume(id); err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	writeJSON(w, map[string]string{"status": "resumed", "session_id": id})
+}
+
 func (s *Server) handleListProjects(w http.ResponseWriter, r *http.Request) {
 	type projectInfo struct {
 		Name          string `json:"name"`

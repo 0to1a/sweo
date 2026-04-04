@@ -219,6 +219,13 @@ a:hover {
 .btn-danger:hover {
   background: rgba(239, 68, 68, 0.1);
 }
+.btn-primary {
+  border-color: rgba(59, 130, 246, 0.3);
+  color: var(--blue, #3b82f6);
+}
+.btn-primary:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
 
 /* Stats bar */
 .stats-bar {

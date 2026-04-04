@@ -75,6 +75,17 @@ function SessionDetailPage() {
       </div>
 
       <div style={{ display: "flex", gap: "8px" }}>
+        {session.Status === "stuck" && (
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              fetch(`/api/sessions/${session.ID}/resume`, { method: "POST" })
+                .then(() => setSession({ ...session, Status: "working" }));
+            }}
+          >
+            Resume
+          </button>
+        )}
         <button
           className="btn btn-danger"
           onClick={() => {

@@ -250,6 +250,23 @@ func (sm *SessionManager) SendMessage(sessionID, message string) error {
 	return runtime.SendKeys(session.TmuxName, message)
 }
 
+// Resume resets a stuck session back to working and refreshes its created-at
+// timestamp so the inactivity timer starts over.
+func (sm *SessionManager) Resume(sessionID string) error {
+	session, err := sm.Get(sessionID)
+	if err != nil {
+		return err
+	}
+	if session.Status != core.StatusStuck {
+		return fmt.Errorf("session %q is %s, not stuck", sessionID, session.Status)
+	}
+	sessionsDir := core.SessionsDir(sm.Cfg.Hash, session.ProjectID)
+	return core.UpdateMetadata(sessionsDir, sessionID, map[string]string{
+		"status":    string(core.StatusWorking),
+		"createdAt": time.Now().UTC().Format(time.RFC3339),
+	})
+}
+
 // UpdateStatus updates the status of a session.
 func (sm *SessionManager) UpdateStatus(sessionID string, status core.SessionStatus) error {
 	session, err := sm.Get(sessionID)
