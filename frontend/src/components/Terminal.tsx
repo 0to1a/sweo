@@ -19,6 +19,7 @@ export function Terminal({ sessionId }: TerminalProps) {
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
+      scrollback: 10000,
       theme: {
         background: "#0a0a0a",
         foreground: "#e4e4e7",
