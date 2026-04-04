@@ -11,6 +11,7 @@ import (
 	"github.com/0to1a/sweo/internal/core"
 	"github.com/0to1a/sweo/internal/github"
 	"github.com/0to1a/sweo/internal/runtime"
+	"github.com/0to1a/sweo/internal/workspace"
 )
 
 // Lifecycle manages the polling loops and state transitions.
@@ -44,6 +45,9 @@ func NewLifecycle(sm *SessionManager, cfg *config.Config) *Lifecycle {
 
 // Start begins the polling loops.
 func (lc *Lifecycle) Start() {
+	// Clean up terminal sessions from previous runs
+	lc.cleanupStale()
+
 	// Ensure labels exist in all project repos
 	for name, proj := range lc.cfg.Projects {
 		if err := github.EnsureLabels(proj.Repo); err != nil {
@@ -368,6 +372,30 @@ func (lc *Lifecycle) checkReviewPending(session *core.Session, proj config.Proje
 	}
 
 	return ""
+}
+
+// cleanupStale removes metadata and tmux sessions for terminal (done/errored) sessions on startup.
+func (lc *Lifecycle) cleanupStale() {
+	for projectID, proj := range lc.cfg.Projects {
+		sessions, err := lc.sm.List(projectID)
+		if err != nil {
+			continue
+		}
+		for _, s := range sessions {
+			if !s.Status.IsTerminal() {
+				continue
+			}
+			log.Printf("Cleaning up stale session %s (status: %s)", s.ID, s.Status)
+			if s.TmuxName != "" {
+				runtime.KillSession(s.TmuxName)
+			}
+			if s.WorkspacePath != "" {
+				workspace.Destroy(proj.Path, s.WorkspacePath)
+			}
+			sessionsDir := core.SessionsDir(lc.cfg.Hash, projectID)
+			core.DeleteMetadata(sessionsDir, s.ID)
+		}
+	}
 }
 
 func (lc *Lifecycle) handleMerged(session *core.Session, proj config.ProjectConfig, issueNum int) {
