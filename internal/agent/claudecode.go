@@ -149,7 +149,7 @@ func isAgentOnTmux(tmuxName, processPattern string) (bool, error) {
 	defer cancel()
 
 	// Get pane TTY
-	cmd := exec.CommandContext(ctx, "tmux", "list-panes", "-t", tmuxName, "-F", "#{pane_tty}")
+	cmd := exec.CommandContext(ctx, "/usr/bin/tmux", "list-panes", "-t", tmuxName, "-F", "#{pane_tty}")
 	out, err := cmd.Output()
 	if err != nil {
 		return false, nil // session doesn't exist
@@ -162,7 +162,7 @@ func isAgentOnTmux(tmuxName, processPattern string) (bool, error) {
 	}
 
 	// Check ps for the process on that TTY
-	psCmd := exec.CommandContext(ctx, "ps", "-eo", "tty,args")
+	psCmd := exec.CommandContext(ctx, "/usr/bin/ps", "-eo", "tty,args")
 	psOut, err := psCmd.Output()
 	if err != nil {
 		return false, nil

@@ -4,6 +4,7 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -25,14 +26,15 @@ func serveFrontend() http.Handler {
 	fileServer := http.FileServer(http.FS(dist))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Try to serve the file directly
-		path := strings.TrimPrefix(r.URL.Path, "/")
-		if path == "" {
-			path = "index.html"
+		// Sanitize path to prevent traversal
+		p := path.Clean("/" + strings.TrimPrefix(r.URL.Path, "/"))
+		p = strings.TrimPrefix(p, "/")
+		if p == "" || p == "." {
+			p = "index.html"
 		}
 
 		// Check if file exists
-		if f, err := dist.Open(path); err == nil {
+		if f, err := dist.Open(p); err == nil {
 			f.Close()
 			fileServer.ServeHTTP(w, r)
 			return

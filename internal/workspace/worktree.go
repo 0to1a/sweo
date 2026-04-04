@@ -152,7 +152,7 @@ func runGit(cwd string, args ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := exec.CommandContext(ctx, "/usr/bin/git", args...)
 	cmd.Dir = cwd
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -165,7 +165,7 @@ func runGitOutput(cwd string, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), gitTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd := exec.CommandContext(ctx, "/usr/bin/git", args...)
 	cmd.Dir = cwd
 	output, err := cmd.Output()
 	if err != nil {
