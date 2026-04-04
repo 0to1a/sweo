@@ -64,7 +64,7 @@ func (s *Server) sendSnapshot(w http.ResponseWriter, flusher http.Flusher) {
 	snapshot := sseSnapshot{
 		Type:      "snapshot",
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		Sessions:  sessions,
+		Sessions:  filterActive(sessions),
 	}
 
 	data, err := json.Marshal(snapshot)

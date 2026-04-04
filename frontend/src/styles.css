@@ -258,3 +258,43 @@ a:hover {
 .dot-red { background: var(--red); }
 .dot-blue { background: var(--accent); }
 .dot-gray { background: var(--text-dim); }
+
+/* PR Table */
+.pr-section {
+  margin-top: 32px;
+}
+.pr-section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.pr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.pr-table th {
+  text-align: left;
+  padding: 8px 12px;
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+.pr-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.75rem;
+}
+.pr-table tr:hover {
+  background: var(--bg-hover);
+}
+.pr-table a {
+  color: var(--accent);
+}
+.pr-table a:hover {
+  text-decoration: underline;
+}

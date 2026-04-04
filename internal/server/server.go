@@ -53,6 +53,7 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/sessions/{id}/kill", s.handleKillSession)
 	mux.HandleFunc("GET /api/events", s.handleSSE)
 	mux.HandleFunc("GET /api/projects", s.handleListProjects)
+	mux.HandleFunc("GET /api/prs", s.handleListPRs)
 	mux.HandleFunc("POST /api/webhooks/github", s.handleGitHubWebhook)
 	mux.HandleFunc("GET /ws/terminal", s.handleTerminalWS)
 

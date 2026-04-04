@@ -1,8 +1,9 @@
-import { createRoute } from "@tanstack/react-router";
+import { createRoute, Link } from "@tanstack/react-router";
 import { rootRoute } from "./__root";
 import { useSSE } from "../hooks/useSSE";
 import { SessionCard } from "../components/SessionCard";
-import type { SessionStatus } from "../lib/types";
+import { StatusBadge } from "../components/StatusBadge";
+import type { Session, SessionStatus } from "../lib/types";
 
 export const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -67,6 +68,52 @@ function SessionsPage() {
           ))}
         </div>
       )}
+
+      <PRTable sessions={sessions} />
+    </div>
+  );
+}
+
+function PRTable({ sessions }: { sessions: Session[] }) {
+  const prs = sessions.filter((s) => s.PRNumber > 0);
+
+  if (prs.length === 0) return null;
+
+  return (
+    <div className="pr-section">
+      <h2>Open Pull Requests</h2>
+      <table className="pr-table">
+        <thead>
+          <tr>
+            <th>PR</th>
+            <th>Session</th>
+            <th>Project</th>
+            <th>Branch</th>
+            <th>Issue</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {prs.map((s) => (
+            <tr key={s.ID}>
+              <td>
+                <a href={s.PRURL} target="_blank" rel="noopener noreferrer">
+                  #{s.PRNumber}
+                </a>
+              </td>
+              <td>
+                <Link to="/sessions/$sessionId" params={{ sessionId: s.ID }} style={{ color: "var(--text)" }}>
+                  {s.ID}
+                </Link>
+              </td>
+              <td>{s.ProjectID}</td>
+              <td>{s.Branch}</td>
+              <td>{s.IssueID ? `#${s.IssueID}` : "-"}</td>
+              <td><StatusBadge status={s.Status} /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
