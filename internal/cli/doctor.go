@@ -126,7 +126,11 @@ func checkBinary(name string) bool {
 }
 
 func getBinaryVersion(name string, arg string) string {
-	out, err := exec.Command(name, arg).Output()
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return "unknown"
+	}
+	out, err := exec.Command(path, arg).Output()
 	if err != nil {
 		return "unknown"
 	}
@@ -134,11 +138,11 @@ func getBinaryVersion(name string, arg string) string {
 }
 
 func checkGHAuth() bool {
-	cmd := exec.Command("gh", "auth", "status")
+	cmd := exec.Command("/usr/bin/gh", "auth", "status")
 	return cmd.Run() == nil
 }
 
 func checkGHRepoAccess(repo string) bool {
-	cmd := exec.Command("gh", "repo", "view", repo, "--json", "name")
+	cmd := exec.Command("/usr/bin/gh", "repo", "view", repo, "--json", "name")
 	return cmd.Run() == nil
 }

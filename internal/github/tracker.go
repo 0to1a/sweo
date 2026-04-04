@@ -182,7 +182,7 @@ func runGHOnce(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), ghTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "gh", args...)
+	cmd := exec.CommandContext(ctx, "/usr/bin/gh", args...)
 	output, err := cmd.Output()
 	if err != nil {
 		var stderr string

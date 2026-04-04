@@ -133,7 +133,7 @@ func runTmux(args ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), tmuxTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "tmux", args...)
+	cmd := exec.CommandContext(ctx, "/usr/bin/tmux", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("tmux %s: %w (output: %s)", args[0], err, strings.TrimSpace(string(output)))
@@ -145,7 +145,7 @@ func runTmuxOutput(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), tmuxTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "tmux", args...)
+	cmd := exec.CommandContext(ctx, "/usr/bin/tmux", args...)
 	output, err := cmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("tmux %s: %w", args[0], err)

@@ -50,11 +50,11 @@ func (s *Server) handleTerminalWS(w http.ResponseWriter, r *http.Request) {
 	defer conn.Close()
 
 	// Disable tmux mouse mode so xterm.js handles scroll natively
-	disableMouseCmd := exec.Command("tmux", "set-option", "-t", session.TmuxName, "mouse", "off")
+	disableMouseCmd := exec.Command("/usr/bin/tmux", "set-option", "-t", session.TmuxName, "mouse", "off")
 	disableMouseCmd.Run() // best-effort, ignore errors
 
 	// Spawn PTY attached to tmux session
-	cmd := exec.Command("tmux", "attach-session", "-t", session.TmuxName)
+	cmd := exec.Command("/usr/bin/tmux", "attach-session", "-t", session.TmuxName)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 
 	ptmx, err := pty.Start(cmd)
