@@ -195,6 +195,48 @@ func GetPendingComments(repo string, prNumber int) ([]string, error) {
 	return comments, nil
 }
 
+// PRComment represents a comment on a PR (issue comment, not review thread).
+type PRComment struct {
+	Author string `json:"author"`
+	Body   string `json:"body"`
+	ID     int    `json:"id"`
+}
+
+// GetPRComments returns issue comments on a PR (not review threads).
+// These are regular comments that anyone (including the repo owner) can leave.
+func GetPRComments(repo string, prNumber int) ([]PRComment, error) {
+	parts := strings.SplitN(repo, "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid repo format: %s", repo)
+	}
+
+	out, err := runGH("api",
+		fmt.Sprintf("repos/%s/%s/issues/%d/comments", parts[0], parts[1], prNumber),
+		"--jq", `.[] | {id: .id, author: .user.login, body: .body}`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get PR comments: %w", err)
+	}
+
+	if strings.TrimSpace(out) == "" {
+		return nil, nil
+	}
+
+	// gh api --jq outputs one JSON object per line (NDJSON)
+	var comments []PRComment
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if line == "" {
+			continue
+		}
+		var c PRComment
+		if err := json.Unmarshal([]byte(line), &c); err != nil {
+			continue
+		}
+		comments = append(comments, c)
+	}
+	return comments, nil
+}
+
 // normalizeCheckState maps GitHub check states to a simple set.
 func normalizeCheckState(state string) string {
 	switch strings.ToUpper(state) {
