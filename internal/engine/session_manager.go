@@ -85,7 +85,7 @@ func (sm *SessionManager) Spawn(projectID string, issue github.Issue) (*core.Ses
 		ProjectID:     projectID,
 		IssueID:       issueNum,
 		WorkspacePath: worktreePath,
-		AgentRules:    proj.AgentRules,
+		AgentRules:    buildFullRules(proj.AgentRules),
 		Prompt:        buildPrompt(issue),
 	}
 
