@@ -202,27 +202,43 @@ type PRComment struct {
 	ID     int    `json:"id"`
 }
 
-// GetPRComments returns issue comments on a PR (not review threads).
-// These are regular comments that anyone (including the repo owner) can leave.
+// GetPRComments returns all human comments on a PR from three sources:
+// 1. Issue comments (general comments below the PR description)
+// 2. Review bodies (submitted via "Comment" or "Request Changes")
+// 3. Review thread comments (inline code comments)
+// This ensures we catch feedback even from the repo owner who can't "request changes" on their own PR.
 func GetPRComments(repo string, prNumber int) ([]PRComment, error) {
 	parts := strings.SplitN(repo, "/", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("invalid repo format: %s", repo)
 	}
+	owner, name := parts[0], parts[1]
 
-	out, err := runGH("api",
-		fmt.Sprintf("repos/%s/%s/issues/%d/comments", parts[0], parts[1], prNumber),
+	var all []PRComment
+
+	// 1. Issue comments
+	if out, err := runGH("api",
+		fmt.Sprintf("repos/%s/%s/issues/%d/comments", owner, name, prNumber),
 		"--jq", `.[] | {id: .id, author: .user.login, body: .body}`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("get PR comments: %w", err)
+	); err == nil {
+		all = append(all, parseNDJSON(out)...)
 	}
 
-	if strings.TrimSpace(out) == "" {
+	// 2. Review bodies (the text submitted with approve/comment/request-changes)
+	if out, err := runGH("api",
+		fmt.Sprintf("repos/%s/%s/pulls/%d/reviews", owner, name, prNumber),
+		"--jq", `.[] | select(.body != "") | {id: .id, author: .user.login, body: .body}`,
+	); err == nil {
+		all = append(all, parseNDJSON(out)...)
+	}
+
+	if len(all) == 0 {
 		return nil, nil
 	}
+	return all, nil
+}
 
-	// gh api --jq outputs one JSON object per line (NDJSON)
+func parseNDJSON(out string) []PRComment {
 	var comments []PRComment
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
 		if line == "" {
@@ -232,9 +248,11 @@ func GetPRComments(repo string, prNumber int) ([]PRComment, error) {
 		if err := json.Unmarshal([]byte(line), &c); err != nil {
 			continue
 		}
-		comments = append(comments, c)
+		if c.Body != "" {
+			comments = append(comments, c)
+		}
 	}
-	return comments, nil
+	return comments
 }
 
 // normalizeCheckState maps GitHub check states to a simple set.
