@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/0to1a/sweo/internal/agent"
@@ -65,6 +66,12 @@ func (sm *SessionManager) Spawn(projectID string, issue github.Issue) (*core.Ses
 		return nil, fmt.Errorf("write metadata: %w", err)
 	}
 
+	// Clean up stale worktree if it exists (e.g. from a previously killed session)
+	if workspace.Exists(worktreePath) {
+		log.Printf("Removing stale worktree at %s", worktreePath)
+		workspace.Destroy(proj.Path, worktreePath)
+	}
+
 	// Create worktree
 	if err := workspace.Create(proj.Path, proj.DefaultBranch, branch, worktreePath); err != nil {
 		core.UpdateMetadata(sessionsDir, sessionID, map[string]string{"status": string(core.StatusErrored)})
@@ -101,9 +108,11 @@ func (sm *SessionManager) Spawn(projectID string, issue github.Issue) (*core.Ses
 		return nil, fmt.Errorf("send launch command: %w", err)
 	}
 
-	// For Claude Code, prompt is sent post-launch
+	// For Claude Code, wait until the prompt is ready before sending the task
 	if proj.Agent == "claude-code" {
-		time.Sleep(2 * time.Second) // wait for agent to start
+		if err := waitForAgentReady(tmuxName, 60*time.Second); err != nil {
+			log.Printf("WARN: agent not ready for %s, sending prompt anyway: %v", sessionID, err)
+		}
 		if err := runtime.SendKeys(tmuxName, launchCfg.Prompt); err != nil {
 			log.Printf("WARN: failed to send prompt to %s: %v", sessionID, err)
 		}
@@ -176,21 +185,27 @@ func (sm *SessionManager) Get(sessionID string) (*core.Session, error) {
 	return nil, fmt.Errorf("session %q not found", sessionID)
 }
 
-// Kill terminates a session's tmux process and marks it as done.
+// Kill terminates a session's tmux process, destroys worktree, and removes metadata.
 func (sm *SessionManager) Kill(sessionID string) error {
 	session, err := sm.Get(sessionID)
 	if err != nil {
 		return err
 	}
 
+	proj := sm.Cfg.Projects[session.ProjectID]
+
 	if session.TmuxName != "" {
 		runtime.KillSession(session.TmuxName)
 	}
 
+	if session.WorkspacePath != "" {
+		if err := workspace.Destroy(proj.Path, session.WorkspacePath); err != nil {
+			log.Printf("WARN: failed to destroy worktree for %s: %v", sessionID, err)
+		}
+	}
+
 	sessionsDir := core.SessionsDir(sm.Cfg.Hash, session.ProjectID)
-	return core.UpdateMetadata(sessionsDir, sessionID, map[string]string{
-		"status": string(core.StatusDone),
-	})
+	return core.DeleteMetadata(sessionsDir, sessionID)
 }
 
 // Cleanup destroys the tmux session and worktree, then marks as done.
@@ -276,6 +291,22 @@ func (sm *SessionManager) loadSession(sessionsDir, sessionID, projectID string) 
 	}
 
 	return s, nil
+}
+
+// waitForAgentReady polls tmux output until the agent's input prompt appears.
+func waitForAgentReady(tmuxName string, timeout time.Duration) error {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		output, err := runtime.CapturePane(tmuxName, 20)
+		if err == nil {
+			// Claude Code shows ❯ when ready, Codex shows >
+			if strings.Contains(output, "❯") || strings.Contains(output, "\n> ") {
+				return nil
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
+	return fmt.Errorf("timeout waiting for agent ready in %s", tmuxName)
 }
 
 func buildPrompt(issue github.Issue) string {
