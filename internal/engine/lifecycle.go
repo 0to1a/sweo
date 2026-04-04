@@ -24,8 +24,9 @@ type Lifecycle struct {
 	states map[string]core.SessionStatus
 
 	// Fingerprints for dedup: sessionID -> last sent fingerprint
-	ciFP      map[string]string
-	reviewFP  map[string]string
+	ciFP       map[string]string
+	reviewFP   map[string]string
+	commentFP  map[string]string
 
 	stopCh chan struct{}
 	wg     sync.WaitGroup
@@ -36,9 +37,10 @@ func NewLifecycle(sm *SessionManager, cfg *config.Config) *Lifecycle {
 	return &Lifecycle{
 		sm:       sm,
 		cfg:      cfg,
-		states:   make(map[string]core.SessionStatus),
-		ciFP:     make(map[string]string),
-		reviewFP: make(map[string]string),
+		states:    make(map[string]core.SessionStatus),
+		ciFP:      make(map[string]string),
+		reviewFP:  make(map[string]string),
+		commentFP: make(map[string]string),
 		stopCh:   make(chan struct{}),
 	}
 }
@@ -285,6 +287,9 @@ func (lc *Lifecycle) checkPRSession(session *core.Session, proj config.ProjectCo
 		}
 	}
 
+	// Check for new PR comments (issue comments — works for self-comments too)
+	lc.maybeSendPRComments(session, proj)
+
 	// Check review
 	review, err := github.GetReviewDecision(proj.Repo, session.PRNumber)
 	if err == nil {
@@ -507,5 +512,44 @@ func (lc *Lifecycle) maybeSendReviewComments(session *core.Session, proj config.
 
 	if err := lc.sm.SendMessage(session.ID, msg); err != nil {
 		log.Printf("WARN: failed to send review comments to %s: %v", session.ID, err)
+	}
+}
+
+// maybeSendPRComments forwards new issue comments on a PR to the agent (deduplicated).
+// This catches comments from anyone, including the repo owner who can't "request changes" on their own PR.
+func (lc *Lifecycle) maybeSendPRComments(session *core.Session, proj config.ProjectConfig) {
+	if session.PRNumber == 0 {
+		return
+	}
+
+	comments, err := github.GetPRComments(proj.Repo, session.PRNumber)
+	if err != nil || len(comments) == 0 {
+		return
+	}
+
+	// Build fingerprint from comment IDs
+	var fp string
+	for _, c := range comments {
+		fp += fmt.Sprintf("%d|", c.ID)
+	}
+
+	lc.mu.Lock()
+	if lc.commentFP[session.ID] == fp {
+		lc.mu.Unlock()
+		return
+	}
+	lc.commentFP[session.ID] = fp
+	lc.mu.Unlock()
+
+	// Build message with all comments
+	msg := "New comments on your PR:\n\n"
+	for _, c := range comments {
+		msg += fmt.Sprintf("@%s:\n%s\n\n---\n\n", c.Author, c.Body)
+	}
+	msg += "Please address these comments."
+
+	log.Printf("Forwarding %d PR comment(s) to %s", len(comments), session.ID)
+	if err := lc.sm.SendMessage(session.ID, msg); err != nil {
+		log.Printf("WARN: failed to send PR comments to %s: %v", session.ID, err)
 	}
 }
