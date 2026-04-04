@@ -105,7 +105,7 @@ function SessionDetailPage() {
   );
 }
 
-function MetaItem({ label, value, link }: { label: string; value: string; link?: string }) {
+function MetaItem({ label, value, link }: Readonly<{ label: string; value: string; link?: string }>) {
   return (
     <div className="meta-item">
       <div className="label">{label}</div>

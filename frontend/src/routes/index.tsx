@@ -74,7 +74,7 @@ function SessionsPage() {
   );
 }
 
-function PRTable({ sessions }: { sessions: Session[] }) {
+function PRTable({ sessions }: Readonly<{ sessions: Session[] }>) {
   const prs = sessions.filter((s) => s.PRNumber > 0);
 
   if (prs.length === 0) return null;
