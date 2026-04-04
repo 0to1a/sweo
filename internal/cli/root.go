@@ -9,7 +9,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Version is set by NewRootCmd and accessible to subcommands.
+var Version string
+
 func NewRootCmd(version string) *cobra.Command {
+	Version = version
 	cmd := &cobra.Command{
 		Use:   "sweo",
 		Short: "SWE-Orchestrator — manage parallel AI coding agents",

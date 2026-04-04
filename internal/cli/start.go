@@ -26,8 +26,8 @@ func runStart(cmd *cobra.Command, args []string) error {
 	bold := color.New(color.Bold).SprintFunc()
 	cyan := color.New(color.FgCyan).SprintFunc()
 
-	fmt.Println(bold("sweo — SWE-Orchestrator"))
-	fmt.Println()
+	dim := color.New(color.Faint).SprintFunc()
+	fmt.Printf("%s %s\n\n", bold("sweo — SWE-Orchestrator"), dim(Version))
 
 	// Load config
 	cfg, err := loadConfig()

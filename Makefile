@@ -1,6 +1,8 @@
-VERSION ?= dev
-BINARY  := sweo
-GOFLAGS := -ldflags "-X main.version=$(VERSION)"
+GIT_TAG    := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0")
+GIT_COUNT  := $(shell git rev-list $(shell git describe --tags --abbrev=0 2>/dev/null || echo HEAD)..HEAD --count 2>/dev/null || echo "0")
+VERSION    := $(GIT_TAG)-$(GIT_COUNT)
+BINARY     := sweo
+GOFLAGS    := -ldflags "-X main.version=$(VERSION)"
 
 .PHONY: build test clean build-frontend dev
 
