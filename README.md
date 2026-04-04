@@ -15,6 +15,14 @@ SWE-Orchestrator — spawns and manages parallel AI coding agents (Claude Code, 
 
 ## Installation
 
+### Quick install
+
+```bash
+go install github.com/0to1a/sweo/cmd/sweo@latest
+```
+
+### Build from source
+
 ```bash
 git clone https://github.com/0to1a/sweo.git
 cd sweo
