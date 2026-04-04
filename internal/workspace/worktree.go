@@ -13,7 +13,20 @@ const gitTimeout = 30 * time.Second
 
 // Create creates a git worktree at worktreePath on the given branch.
 // It resolves the base ref from the repo's default branch.
+// If the branch or worktree already exists from a previous session, it cleans up first.
 func Create(repoPath, defaultBranch, branch, worktreePath string) error {
+	// Aggressively clean up stale worktrees that might hold the branch
+	cleanupBranch(repoPath, branch)
+
+	// If the target worktree path still exists, remove it
+	if _, err := os.Stat(worktreePath); err == nil {
+		os.RemoveAll(worktreePath)
+	}
+
+	// Final prune + branch delete
+	_ = runGit(repoPath, "worktree", "prune")
+	_ = runGit(repoPath, "branch", "-D", branch)
+
 	// Fetch origin (best-effort, ignore errors)
 	if hasRemote(repoPath, "origin") {
 		_ = runGit(repoPath, "fetch", "origin", "--quiet")
@@ -25,35 +38,68 @@ func Create(repoPath, defaultBranch, branch, worktreePath string) error {
 		return fmt.Errorf("resolve base ref: %w", err)
 	}
 
-	// Try creating worktree with new branch
-	err = runGit(repoPath, "worktree", "add", "-b", branch, worktreePath, baseRef)
+	// Create worktree with new branch
+	return runGit(repoPath, "worktree", "add", "-b", branch, worktreePath, baseRef)
+}
+
+// cleanupBranch removes all worktrees using the given branch and deletes the branch.
+func cleanupBranch(repoPath, branch string) {
+	// List all worktrees, find any using this branch, and remove them
+	out, err := runGitOutput(repoPath, "worktree", "list", "--porcelain")
 	if err != nil {
-		// Branch might already exist — try without -b and checkout
-		if strings.Contains(err.Error(), "already exists") {
-			err2 := runGit(repoPath, "worktree", "add", worktreePath, baseRef)
-			if err2 != nil {
-				return fmt.Errorf("worktree add (fallback): %w", err2)
-			}
-			return runGit(worktreePath, "checkout", branch)
+		return
+	}
+
+	var currentPath string
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "worktree ") {
+			currentPath = strings.TrimPrefix(line, "worktree ")
 		}
-		return fmt.Errorf("worktree add: %w", err)
+		if strings.TrimSpace(line) == "branch refs/heads/"+branch && currentPath != "" && currentPath != repoPath {
+			// This worktree uses our branch — remove it
+			_ = runGit(repoPath, "worktree", "remove", "--force", currentPath)
+			os.RemoveAll(currentPath)
+			currentPath = ""
+		}
+	}
+
+	_ = runGit(repoPath, "worktree", "prune")
+	_ = runGit(repoPath, "branch", "-D", branch)
+}
+
+// Destroy removes a git worktree and its branch. Falls back to os.RemoveAll if git fails.
+func Destroy(repoPath, worktreePath string) error {
+	// Get the branch name before removing (for cleanup)
+	branch := getWorktreeBranch(worktreePath)
+
+	err := runGit(repoPath, "worktree", "remove", "--force", worktreePath)
+	if err != nil {
+		// Fallback: just remove the directory
+		os.RemoveAll(worktreePath)
+	}
+
+	// Always prune stale worktree entries
+	_ = runGit(repoPath, "worktree", "prune")
+
+	// Delete the branch so it can be recreated on re-spawn
+	if branch != "" {
+		_ = runGit(repoPath, "branch", "-D", branch)
 	}
 
 	return nil
 }
 
-// Destroy removes a git worktree. Falls back to os.RemoveAll if git fails.
-func Destroy(repoPath, worktreePath string) error {
-	err := runGit(repoPath, "worktree", "remove", "--force", worktreePath)
+// getWorktreeBranch returns the branch checked out in a worktree, or "".
+func getWorktreeBranch(worktreePath string) string {
+	out, err := runGitOutput(worktreePath, "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
-		// Fallback: just remove the directory
-		if rmErr := os.RemoveAll(worktreePath); rmErr != nil {
-			return fmt.Errorf("git worktree remove failed: %w; fallback rm also failed: %v", err, rmErr)
-		}
-		// Prune stale worktree entries
-		_ = runGit(repoPath, "worktree", "prune")
+		return ""
 	}
-	return nil
+	branch := strings.TrimSpace(out)
+	if branch == "HEAD" {
+		return "" // detached HEAD
+	}
+	return branch
 }
 
 // Exists checks if a path is a valid git worktree.
