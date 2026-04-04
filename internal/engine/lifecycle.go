@@ -44,6 +44,15 @@ func NewLifecycle(sm *SessionManager, cfg *config.Config) *Lifecycle {
 
 // Start begins the polling loops.
 func (lc *Lifecycle) Start() {
+	// Ensure labels exist in all project repos
+	for name, proj := range lc.cfg.Projects {
+		if err := github.EnsureLabels(proj.Repo); err != nil {
+			log.Printf("WARN: failed to ensure labels for %s: %v", name, err)
+		} else {
+			log.Printf("Labels ensured for %s (%s)", name, proj.Repo)
+		}
+	}
+
 	lc.wg.Add(2)
 
 	go lc.issueLoop()
