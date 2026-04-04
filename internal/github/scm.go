@@ -232,6 +232,14 @@ func GetPRComments(repo string, prNumber int) ([]PRComment, error) {
 		all = append(all, parseNDJSON(out)...)
 	}
 
+	// 3. Inline review comments (code line comments)
+	if out, err := runGH("api",
+		fmt.Sprintf("repos/%s/%s/pulls/%d/comments", owner, name, prNumber),
+		"--jq", `.[] | {id: .id, author: .user.login, body: (.body + " (file: " + .path + ")")}`,
+	); err == nil {
+		all = append(all, parseNDJSON(out)...)
+	}
+
 	if len(all) == 0 {
 		return nil, nil
 	}
