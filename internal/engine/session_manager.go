@@ -116,6 +116,8 @@ func (sm *SessionManager) Spawn(projectID string, issue github.Issue) (*core.Ses
 		if err := runtime.SendKeys(tmuxName, launchCfg.Prompt); err != nil {
 			log.Printf("WARN: failed to send prompt to %s: %v", sessionID, err)
 		}
+		// Verify the prompt was actually submitted; if not, retry with alternative keys
+		ensurePromptSubmitted(tmuxName, sessionID)
 	}
 
 	// Update status to working
@@ -308,6 +310,44 @@ func (sm *SessionManager) loadSession(sessionsDir, sessionID, projectID string) 
 	}
 
 	return s, nil
+}
+
+// ensurePromptSubmitted checks if the prompt was submitted by looking for the
+// input cursor (❯) still present in the tmux pane. If the prompt text is still
+// in the input buffer (multiline mode), it retries submission with alternative keys.
+func ensurePromptSubmitted(tmuxName, sessionID string) {
+	// Wait for tmux to process the initial Enter
+	time.Sleep(1 * time.Second)
+
+	// Submit key alternatives to try when Enter doesn't submit in multiline mode
+	submitKeys := []string{"C-j", "Escape", "Enter"}
+
+	for attempt, key := range submitKeys {
+		output, err := runtime.CapturePane(tmuxName, 20)
+		if err != nil {
+			return
+		}
+
+		// If ❯ is gone, the prompt was submitted successfully
+		if !strings.Contains(output, "❯") {
+			if attempt > 0 {
+				log.Printf("Session %s: prompt submitted on retry #%d", sessionID, attempt)
+			}
+			return
+		}
+
+		log.Printf("Session %s: prompt not submitted (attempt %d), sending %s", sessionID, attempt+1, key)
+		if err := runtime.SendRawKey(tmuxName, key); err != nil {
+			log.Printf("WARN: failed to send %s to %s: %v", key, sessionID, err)
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	// Final check
+	output, err := runtime.CapturePane(tmuxName, 20)
+	if err == nil && strings.Contains(output, "❯") {
+		log.Printf("WARN: session %s prompt may not have been submitted after all retries", sessionID)
+	}
 }
 
 // waitForAgentReady polls tmux output until the agent's input prompt appears.

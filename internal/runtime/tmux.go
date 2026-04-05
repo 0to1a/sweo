@@ -104,6 +104,14 @@ func SendKeys(name, text string) error {
 	return runTmux("send-keys", "-t", name, "Enter")
 }
 
+// SendRawKey sends a single key (e.g. "Enter", "C-j", "Escape") to a tmux session.
+func SendRawKey(name, key string) error {
+	if err := ValidateName(name); err != nil {
+		return err
+	}
+	return runTmux("send-keys", "-t", name, key)
+}
+
 // CapturePane captures the last N lines of output from a tmux pane.
 func CapturePane(name string, lines int) (string, error) {
 	if err := ValidateName(name); err != nil {
